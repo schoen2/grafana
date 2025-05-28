@@ -11,17 +11,7 @@ import {
   // SetStateAction,
   RefObject,
 } from 'react';
-import {
-  DataGrid,
-  RenderCellProps,
-  RenderRowProps,
-  Row,
-  // SortColumn,
-  DataGridHandle,
-  // Column,
-  // CalculatedColumn,
-  ColumnOrColumnGroup,
-} from 'react-data-grid';
+import { DataGrid, RenderCellProps, RenderRowProps, Row, /* SortColumn, */ DataGridHandle } from 'react-data-grid';
 // import { useMeasure } from 'react-use';
 
 import {
@@ -43,15 +33,14 @@ import { /* t, */ Trans } from '../../../utils/i18n';
 // import { ContextMenu } from '../../ContextMenu/ContextMenu';
 // import { MenuItem } from '../../Menu/MenuItem';
 // import { Pagination } from '../../Pagination/Pagination';
-import { PanelContext, /* , usePanelContext */
-usePanelContext} from '../../PanelChrome';
+import { PanelContext /* , usePanelContext */, usePanelContext } from '../../PanelChrome';
 // import { TableCellInspector, TableCellInspectorMode } from '../TableCellInspector';
 
 import { HeaderCell } from './Cells/HeaderCell';
 import { RowExpander } from './Cells/RowExpander';
 import { TableCellNG } from './Cells/TableCellNG';
 import { COLUMN, TABLE } from './constants';
-import { TableFilterAndSortsContext, useTableFiltersAndSorts } from './hooks';
+import { useTableFiltersAndSorts } from './hooks';
 import {
   TableNGProps,
   // FilterType,
@@ -63,7 +52,6 @@ import {
   TableFieldOptionsType,
   // ScrollPosition,
   CellColors,
-  FilterType,
 } from './types';
 import {
   frameToRecords,
@@ -82,30 +70,24 @@ import {
 } from './utils';
 
 export function TableNG(props: TableNGProps) {
-  const [filter, setFilter] = useState<FilterType>({});
-
-  return (
-    <TableFilterAndSortsContext.Provider value={{filter, setFilter}}>
-      <TableNGInner {...props} />
-    </TableFilterAndSortsContext.Provider>
-  );
-}
-
-function TableNGInner(props: TableNGProps) {
   const styles = useStyles2(getStyles2);
   const panelContext = usePanelContext();
 
   const { data, onColumnResize, width } = props;
   const gridHandle = useRef<DataGridHandle>(null);
+  const headerCellRefs = useRef<Record<string, HTMLDivElement>>({});
 
   // the data passed into this component is always a new reference after column resizing,
   // which leads to the memos in this component failing to work properly. we sinfully
   // memoize based on the array length here.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const memoizedData = useMemo(() => data, [data.length]);
+  // const memoizedData = useMemo(() => data, [data.length]);
 
-  const rows = useMemo(() => frameToRecords(memoizedData), [memoizedData]);
-  const { renderedRows } = useTableFiltersAndSorts(rows, memoizedData);
+  const rows = useMemo(() => frameToRecords(data), [data]);
+  const { filter, setFilter, crossFilterOrder, crossFilterRows, renderedRows } = useTableFiltersAndSorts(
+    rows,
+    data.fields
+  );
 
   // const [expandedRows]?
 
@@ -117,9 +99,9 @@ function TableNGInner(props: TableNGProps) {
 
   // TODO: skip hidden
   const columns = useMemo<TableColumn[]>((): TableColumn[] => {
-    const widths = computeColWidths(memoizedData.fields, width - scrollbarWidth);
+    const widths = computeColWidths(data.fields, width - scrollbarWidth);
 
-    return memoizedData.fields.map(
+    return data.fields.map(
       (field, i): TableColumn => ({
         field,
         key: field.name,
@@ -142,14 +124,55 @@ function TableNGInner(props: TableNGProps) {
                     return null;
                 }
               },
+        renderHeaderCell: ({ column, sortDirection }): JSX.Element => (
+          <HeaderCell
+            column={column}
+            rows={rows}
+            field={field}
+            onSort={() => {}}
+            // onSort={(columnKey, direction, isMultiSort) => {
+            //   handleSort(columnKey, direction, isMultiSort, setSortColumns, sortColumnsRef);
+
+            //   // Update panel context with the new sort order
+            //   if (onSortByChange) {
+            //     const sortByFields = sortColumnsRef.current.map(({ columnKey, direction }) => ({
+            //       displayName: columnKey,
+            //       desc: direction === 'DESC',
+            //     }));
+            //     onSortByChange(sortByFields);
+            //   }
+            // }}
+            filter={filter}
+            setFilter={setFilter}
+            crossFilterOrder={crossFilterOrder}
+            crossFilterRows={crossFilterRows}
+            direction={sortDirection}
+            justifyContent={getTextAlign(field)}
+            onColumnResize={onColumnResize}
+            headerCellRefs={headerCellRefs}
+            showTypeIcons={props.showTypeIcons}
+          />
+        ),
       })
     );
-  }, [width, scrollbarWidth, memoizedData.fields, styles]);
+  }, [
+    width,
+    scrollbarWidth,
+    rows,
+    onColumnResize,
+    data.fields,
+    styles,
+    props.showTypeIcons,
+    filter,
+    setFilter,
+    crossFilterOrder,
+    crossFilterRows,
+  ]);
 
   const hasSubTable = false;
 
   // todo: don't re-init this on each memoizedData change, only schema/config changes
-  const rowHeight = useRowHeight(columns, memoizedData, hasSubTable);
+  const rowHeight = useRowHeight(columns, data, hasSubTable);
 
   return (
     <DataGrid<TableRow, TableSummaryRow>
@@ -220,7 +243,7 @@ export function mapFrameToDataGrid({
   const { onCellExpand, onColumnResize } = handlers;
 
   const columns: TableColumn[] = [];
-  const hasNestedFrames = getIsNestedTable(frame);
+  const hasNestedFrames = getIsNestedTable(frame.fields);
 
   // If nested frames, add expansion control column
   if (hasNestedFrames) {
