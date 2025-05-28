@@ -500,6 +500,7 @@ export interface MapFrameToGridOptions extends TableNGProps {
   ctx: CanvasRenderingContext2D;
   onSortByChange?: (sortBy: TableSortByFieldState[]) => void;
   rows: TableRow[];
+  renderedRows: TableRow[];
   setContextMenuProps: (props: { value: string; top?: number; left?: number; mode?: TableCellInspectorMode }) => void;
   setFilter: React.Dispatch<React.SetStateAction<FilterType>>;
   setIsInspecting: (isInspecting: boolean) => void;

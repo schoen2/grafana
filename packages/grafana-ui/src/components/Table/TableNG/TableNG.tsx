@@ -43,13 +43,15 @@ import { /* t, */ Trans } from '../../../utils/i18n';
 // import { ContextMenu } from '../../ContextMenu/ContextMenu';
 // import { MenuItem } from '../../Menu/MenuItem';
 // import { Pagination } from '../../Pagination/Pagination';
-import { PanelContext /* , usePanelContext */ } from '../../PanelChrome';
+import { PanelContext, /* , usePanelContext */
+usePanelContext} from '../../PanelChrome';
 // import { TableCellInspector, TableCellInspectorMode } from '../TableCellInspector';
 
 import { HeaderCell } from './Cells/HeaderCell';
 import { RowExpander } from './Cells/RowExpander';
 import { TableCellNG } from './Cells/TableCellNG';
 import { COLUMN, TABLE } from './constants';
+import { TableFilterAndSortsContext, useTableFiltersAndSorts } from './hooks';
 import {
   TableNGProps,
   // FilterType,
@@ -61,6 +63,7 @@ import {
   TableFieldOptionsType,
   // ScrollPosition,
   CellColors,
+  FilterType,
 } from './types';
 import {
   frameToRecords,
@@ -79,7 +82,18 @@ import {
 } from './utils';
 
 export function TableNG(props: TableNGProps) {
+  const [filter, setFilter] = useState<FilterType>({});
+
+  return (
+    <TableFilterAndSortsContext.Provider value={{filter, setFilter}}>
+      <TableNGInner {...props} />
+    </TableFilterAndSortsContext.Provider>
+  );
+}
+
+function TableNGInner(props: TableNGProps) {
   const styles = useStyles2(getStyles2);
+  const panelContext = usePanelContext();
 
   const { data, onColumnResize, width } = props;
   const gridHandle = useRef<DataGridHandle>(null);
@@ -91,11 +105,7 @@ export function TableNG(props: TableNGProps) {
   const memoizedData = useMemo(() => data, [data.length]);
 
   const rows = useMemo(() => frameToRecords(memoizedData), [memoizedData]);
-
-  const [filts, _setFilts] = useState([]);
-  const [sorts, _setSorts] = useState([]);
-
-  const renderedRows = useMemo(() => filterAndSort(rows, filts, sorts), [rows, filts, sorts]);
+  const { renderedRows } = useTableFiltersAndSorts(rows, memoizedData);
 
   // const [expandedRows]?
 
@@ -134,19 +144,18 @@ export function TableNG(props: TableNGProps) {
               },
       })
     );
-  }, [width, scrollbarWidth, memoizedData, styles]);
+  }, [width, scrollbarWidth, memoizedData.fields, styles]);
 
   const hasSubTable = false;
 
-  // todo: don't re-init this on each data change, only schema/config changes
+  // todo: don't re-init this on each memoizedData change, only schema/config changes
   const rowHeight = useRowHeight(columns, memoizedData, hasSubTable);
 
   return (
-    <DataGrid
+    <DataGrid<TableRow, TableSummaryRow>
       className={styles.grid}
       ref={gridHandle}
-      // TODO: fix these types
-      columns={columns as Array<ColumnOrColumnGroup<NoInfer<TableRow>, unknown>>}
+      columns={columns}
       rows={renderedRows}
       defaultColumnOptions={{
         minWidth: 50,
@@ -160,6 +169,10 @@ export function TableNG(props: TableNGProps) {
         }
       }}
       rowHeight={rowHeight}
+      renderers={{
+        renderRow: (key, rowProps) =>
+          myRowRenderer(key, rowProps, [], panelContext, data, props.enableSharedCrosshair ?? false),
+      }}
     />
   );
 }
@@ -191,8 +204,8 @@ export function mapFrameToDataGrid({
     onCellFilterAdded,
     ctx,
     onSortByChange,
+    renderedRows,
     rows,
-    // sortedRows,
     setContextMenuProps,
     setFilter,
     setIsInspecting,
@@ -284,7 +297,7 @@ export function mapFrameToDataGrid({
       fieldOptions.cellOptions.applyToRow
     ) {
       rowBg = (rowIndex: number): CellColors => {
-        const display = field.display!(field.values.get(/*sortedRows*/ rows[rowIndex].__index));
+        const display = field.display!(field.values.get(renderedRows[rowIndex].__index));
         const colors = getCellColors(theme, fieldOptions.cellOptions, display);
         return colors;
       };
@@ -330,7 +343,7 @@ export function mapFrameToDataGrid({
             timeRange={timeRange ?? getDefaultTimeRange()}
             height={defaultRowHeight}
             justifyContent={justifyColumnContent}
-            rowIdx={/*sortedRows*/ rows[rowIdx].__index}
+            rowIdx={renderedRows[rowIdx].__index}
             shouldTextOverflow={() =>
               shouldTextOverflow(
                 key,
@@ -714,10 +727,6 @@ function useScrollbarWidth(ref: RefObject<DataGridHandle>, { height }: TableNGPr
   );
 
   return scrollbarWidth;
-}
-
-function filterAndSort(rows: TableRow[], filts = [], sorts = []) {
-  return rows;
 }
 
 const useRowHeight = (columns: TableColumn[], data: DataFrame, hasSubTable: boolean) => {
