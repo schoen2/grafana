@@ -5,12 +5,9 @@ import { Field, formattedValueToString } from '@grafana/data';
 import { FilterType, TableRow } from './types';
 import { getDisplayName, getIsNestedTable, processNestedTableRows } from './utils';
 
-interface TableFiltersAndSortContextIFace {
+interface TableFiltersAndSort {
   filter: FilterType;
   setFilter: React.Dispatch<React.SetStateAction<FilterType>>;
-}
-
-interface TableFiltersAndSort extends TableFiltersAndSortContextIFace {
   renderedRows: TableRow[];
   crossFilterOrder: string[];
   crossFilterRows: { [key: string]: TableRow[] };
@@ -31,22 +28,10 @@ export function useTableFiltersAndSorts(rows: TableRow[], fields: Field[]): Tabl
 
   const filterValues = useMemo(() => Object.entries(filter), [filter]);
 
-  const crossFilterOrder: TableFiltersAndSort['crossFilterOrder'] = useMemo(() => {
-    if (filterValues.length === 0) {
-      return [];
-    }
-
-    // Update crossFilterOrder
-    const filterKeys = new Set(filterValues.map(([key]) => key));
-    return Array.from(filterKeys).reduce((accum: string[], key) => {
-      if (!accum.includes(key)) {
-        // Each time a filter is added or removed, it is always a single filter.
-        // When adding a new filter, it is always appended to the end, maintaining the order.
-        accum.push(key);
-      }
-      return accum;
-    }, []);
-  }, [filterValues]);
+  const crossFilterOrder: TableFiltersAndSort['crossFilterOrder'] = useMemo(
+    () => Array.from(new Set(filterValues.map(([key]) => key))),
+    [filterValues]
+  );
 
   const hasNestedFrames = useMemo(() => getIsNestedTable(fields), [fields]);
 
