@@ -11,7 +11,14 @@ import {
   // SetStateAction,
   RefObject,
 } from 'react';
-import { DataGrid, RenderCellProps, RenderRowProps, Row, /* SortColumn, */ DataGridHandle } from 'react-data-grid';
+import {
+  DataGrid,
+  RenderCellProps,
+  RenderRowProps,
+  Row,
+  /* SortColumn, */ DataGridHandle,
+  SortColumn,
+} from 'react-data-grid';
 // import { useMeasure } from 'react-use';
 
 import {
@@ -70,6 +77,19 @@ import {
 } from './utils';
 
 export function TableNG(props: TableNGProps) {
+  const initialSortColumns = useMemo<SortColumn[]>(() => {
+    const initialSort = props.initialSortBy?.map(({ displayName, desc }) => {
+      const matchingField = data.fields.find(({ state }) => state?.displayName === displayName);
+      const columnKey = matchingField?.name || displayName;
+
+      return {
+        columnKey,
+        direction: desc ? ('DESC' as const) : ('ASC' as const),
+      };
+    });
+    return initialSort ?? [];
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const styles = useStyles2(getStyles2);
   const panelContext = usePanelContext();
 
@@ -77,17 +97,12 @@ export function TableNG(props: TableNGProps) {
   const gridHandle = useRef<DataGridHandle>(null);
   const headerCellRefs = useRef<Record<string, HTMLDivElement>>({});
 
-  // the data passed into this component is always a new reference after column resizing,
-  // which leads to the memos in this component failing to work properly. we sinfully
-  // memoize based on the array length here.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  // const memoizedData = useMemo(() => data, [data.length]);
+  // TODO: construct a memoized represenation of the data to use throughout,
+  // which shields us from changes to the fieldOverrides.
 
   const rows = useMemo(() => frameToRecords(data), [data]);
-  const { filter, setFilter, crossFilterOrder, crossFilterRows, renderedRows } = useTableFiltersAndSorts(
-    rows,
-    data.fields
-  );
+  const { filter, setFilter, crossFilterOrder, crossFilterRows, renderedRows, setSortColumns, sortColumns } =
+    useTableFiltersAndSorts(rows, data.fields);
 
   // const [expandedRows]?
 
@@ -129,19 +144,18 @@ export function TableNG(props: TableNGProps) {
             column={column}
             rows={rows}
             field={field}
-            onSort={() => {}}
-            // onSort={(columnKey, direction, isMultiSort) => {
-            //   handleSort(columnKey, direction, isMultiSort, setSortColumns, sortColumnsRef);
+            onSort={(columnKey, direction, isMultiSort) => {
+              handleSort(columnKey, direction, isMultiSort, setSortColumns, sortColumns);
 
-            //   // Update panel context with the new sort order
-            //   if (onSortByChange) {
-            //     const sortByFields = sortColumnsRef.current.map(({ columnKey, direction }) => ({
-            //       displayName: columnKey,
-            //       desc: direction === 'DESC',
-            //     }));
-            //     onSortByChange(sortByFields);
-            //   }
-            // }}
+              // Update panel context with the new sort order
+              if (props.onSortByChange) {
+                const sortByFields = sortColumns.map(({ columnKey, direction }) => ({
+                  displayName: columnKey,
+                  desc: direction === 'DESC',
+                }));
+                props.onSortByChange(sortByFields);
+              }
+            }}
             filter={filter}
             setFilter={setFilter}
             crossFilterOrder={crossFilterOrder}

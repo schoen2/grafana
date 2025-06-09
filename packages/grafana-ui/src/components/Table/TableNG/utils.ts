@@ -430,11 +430,11 @@ export const handleSort = (
   direction: SortDirection,
   isMultiSort: boolean,
   setSortColumns: React.Dispatch<React.SetStateAction<readonly SortColumn[]>>,
-  sortColumnsRef: React.MutableRefObject<readonly SortColumn[]>
+  sortColumns: readonly SortColumn[]
 ) => {
   let currentSortColumn: SortColumn | undefined;
 
-  const updatedSortColumns = sortColumnsRef.current.filter((column) => {
+  const updatedSortColumns = sortColumns.filter((column) => {
     const isCurrentColumn = column.columnKey === columnKey;
     if (isCurrentColumn) {
       currentSortColumn = column;
@@ -445,15 +445,12 @@ export const handleSort = (
   // sorted column exists and is descending -> remove it to reset sorting
   if (currentSortColumn && currentSortColumn.direction === 'DESC') {
     setSortColumns(updatedSortColumns);
-    sortColumnsRef.current = updatedSortColumns;
   } else {
     // new sort column or changed direction
     if (isMultiSort) {
       setSortColumns([...updatedSortColumns, { columnKey, direction }]);
-      sortColumnsRef.current = [...updatedSortColumns, { columnKey, direction }];
     } else {
       setSortColumns([{ columnKey, direction }]);
-      sortColumnsRef.current = [{ columnKey, direction }];
     }
   }
 };

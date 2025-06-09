@@ -4,10 +4,13 @@ import { Field, formattedValueToString } from '@grafana/data';
 
 import { FilterType, TableRow } from './types';
 import { getDisplayName, getIsNestedTable, processNestedTableRows } from './utils';
+import { SortColumn } from 'react-data-grid';
 
 interface TableFiltersAndSort {
   filter: FilterType;
   setFilter: React.Dispatch<React.SetStateAction<FilterType>>;
+  sortColumns: string[];
+  setSortColumns: React.Dispatch<React.SetStateAction<string[]>>;
   renderedRows: TableRow[];
   crossFilterOrder: string[];
   crossFilterRows: { [key: string]: TableRow[] };
@@ -25,6 +28,7 @@ const getDisplayedValue = (row: TableRow, key: string, fields: Field[]) => {
 
 export function useTableFiltersAndSorts(rows: TableRow[], fields: Field[]): TableFiltersAndSort {
   const [filter, setFilter] = useState<FilterType>({});
+  const [sortColumns, setSortColumns] = useState<SortColumn[]>([]);
 
   const filterValues = useMemo(() => Object.entries(filter), [filter]);
 
@@ -63,5 +67,7 @@ export function useTableFiltersAndSorts(rows: TableRow[], fields: Field[]): Tabl
     renderedRows: filteredRows,
     crossFilterOrder,
     crossFilterRows,
+    sortColumns,
+    setSortColumns,
   };
 }
