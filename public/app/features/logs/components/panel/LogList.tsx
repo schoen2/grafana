@@ -29,6 +29,7 @@ import { GetRowContextQueryFn, LogLineMenuCustomItem } from './LogLineMenu';
 import { LogListContextProvider, LogListState, useLogListContext } from './LogListContext';
 import { LogListControls } from './LogListControls';
 import { LogListSearch } from './LogListSearch';
+import { LogListSearchContextProvider } from './LogListSearchContext';
 import { preProcessLogs, LogListModel } from './processing';
 import { useKeyBindings } from './useKeyBindings';
 import {
@@ -184,19 +185,21 @@ export const LogList = ({
       syntaxHighlighting={syntaxHighlighting}
       wrapLogMessage={wrapLogMessage}
     >
-      <LogListComponent
-        containerElement={containerElement}
-        eventBus={eventBus}
-        getFieldLinks={getFieldLinks}
-        grammar={grammar}
-        initialScrollPosition={initialScrollPosition}
-        loading={loading}
-        loadMore={loadMore}
-        logs={logs}
-        showControls={showControls}
-        timeRange={timeRange}
-        timeZone={timeZone}
-      />
+      <LogListSearchContextProvider>
+        <LogListComponent
+          containerElement={containerElement}
+          eventBus={eventBus}
+          getFieldLinks={getFieldLinks}
+          grammar={grammar}
+          initialScrollPosition={initialScrollPosition}
+          loading={loading}
+          loadMore={loadMore}
+          logs={logs}
+          showControls={showControls}
+          timeRange={timeRange}
+          timeZone={timeZone}
+        />
+      </LogListSearchContextProvider>
     </LogListContextProvider>
   );
 };
