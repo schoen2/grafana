@@ -78,7 +78,7 @@ import {
 
 export function TableNG(props: TableNGProps) {
   const theme = useTheme2();
-  const styles = useStyles2(getStyles2, !!props.enablePagination);
+  const styles = useStyles2(getStyles2, { enablePagination: props.enablePagination, noHeader: props.noHeader });
   const panelContext = usePanelContext();
 
   const {
@@ -107,16 +107,16 @@ export function TableNG(props: TableNGProps) {
   const panelPaddingHeight = theme.components.panel.padding * theme.spacing.gridSize * 2;
 
   const headerCellHeight = useMemo(() => {
-    let h = TABLE.MAX_CELL_HEIGHT;
-    if (hasHeader) {
-      h = 0;
+    if (!hasHeader) {
+      return 0;
     } else {
+      // this loop is here to avoid a call to Object.keys() to get the first key in this object.
+      // the return ensures its only executed once if it is executed at all.
       for (const key in headerCellRefs.current) {
-        h = headerCellRefs.current[key].getBoundingClientRect().height;
-        break;
+        return headerCellRefs.current[key].getBoundingClientRect().height;
       }
     }
-    return h;
+    return TABLE.MAX_CELL_HEIGHT;
   }, [hasHeader, headerCellRefs]);
 
   const rows = useMemo(() => frameToRecords(data), [data]);
@@ -248,6 +248,8 @@ export function TableNG(props: TableNGProps) {
         }}
         sortColumns={sortColumns}
         rowHeight={rowHeight}
+        headerRowClass={styles.dataGridHeaderRow}
+        headerRowHeight={noHeader ? 0 : undefined}
         renderers={{
           renderRow: (key, rowProps) =>
             myRowRenderer(key, rowProps, [], panelContext, data, enableSharedCrosshair ?? false),
@@ -596,7 +598,7 @@ export function onRowLeave(panelContext: PanelContext, enableSharedCrosshair: bo
   panelContext.eventBus.publish(new DataHoverClearEvent());
 }
 
-const getStyles2 = (theme: GrafanaTheme2, enablePagination: boolean) => ({
+const getStyles2 = (theme: GrafanaTheme2, {enablePagination, noHeader} : {enablePagination?: boolean, noHeader?: boolean}) => ({
   grid: css({
     '--rdg-background-color': theme.colors.background.primary,
     '--rdg-header-background-color': theme.colors.background.primary,
@@ -665,6 +667,9 @@ const getStyles2 = (theme: GrafanaTheme2, enablePagination: boolean) => ({
     display: 'flex',
     justifyContent: 'flex-end',
     padding: theme.spacing(0, 1, 0, 2),
+  }),
+  dataGridHeaderRow: css({
+    ...(noHeader && { display: 'none' })
   }),
 });
 
