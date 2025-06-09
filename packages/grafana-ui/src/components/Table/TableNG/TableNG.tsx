@@ -13,11 +13,10 @@ import {
 } from 'react';
 import {
   DataGrid,
+  DataGridHandle,
   RenderCellProps,
   RenderRowProps,
   Row,
-  /* SortColumn, */ DataGridHandle,
-  SortColumn,
 } from 'react-data-grid';
 // import { useMeasure } from 'react-use';
 
@@ -77,23 +76,10 @@ import {
 } from './utils';
 
 export function TableNG(props: TableNGProps) {
-  const initialSortColumns = useMemo<SortColumn[]>(() => {
-    const initialSort = props.initialSortBy?.map(({ displayName, desc }) => {
-      const matchingField = data.fields.find(({ state }) => state?.displayName === displayName);
-      const columnKey = matchingField?.name || displayName;
-
-      return {
-        columnKey,
-        direction: desc ? ('DESC' as const) : ('ASC' as const),
-      };
-    });
-    return initialSort ?? [];
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const styles = useStyles2(getStyles2);
   const panelContext = usePanelContext();
 
-  const { data, onColumnResize, width } = props;
+  const { data, initialSortBy, onColumnResize, onSortByChange, showTypeIcons, width } = props;
   const gridHandle = useRef<DataGridHandle>(null);
   const headerCellRefs = useRef<Record<string, HTMLDivElement>>({});
 
@@ -102,7 +88,7 @@ export function TableNG(props: TableNGProps) {
 
   const rows = useMemo(() => frameToRecords(data), [data]);
   const { filter, setFilter, crossFilterOrder, crossFilterRows, renderedRows, setSortColumns, sortColumns } =
-    useTableFiltersAndSorts(rows, data.fields);
+    useTableFiltersAndSorts(rows, data.fields, initialSortBy);
 
   // const [expandedRows]?
 
@@ -145,16 +131,7 @@ export function TableNG(props: TableNGProps) {
             rows={rows}
             field={field}
             onSort={(columnKey, direction, isMultiSort) => {
-              handleSort(columnKey, direction, isMultiSort, setSortColumns, sortColumns);
-
-              // Update panel context with the new sort order
-              if (props.onSortByChange) {
-                const sortByFields = sortColumns.map(({ columnKey, direction }) => ({
-                  displayName: columnKey,
-                  desc: direction === 'DESC',
-                }));
-                props.onSortByChange(sortByFields);
-              }
+              handleSort(columnKey, direction, isMultiSort, setSortColumns, sortColumns, onSortByChange);
             }}
             filter={filter}
             setFilter={setFilter}
@@ -164,7 +141,7 @@ export function TableNG(props: TableNGProps) {
             justifyContent={getTextAlign(field)}
             onColumnResize={onColumnResize}
             headerCellRefs={headerCellRefs}
-            showTypeIcons={props.showTypeIcons}
+            showTypeIcons={showTypeIcons}
           />
         ),
       })
@@ -176,11 +153,14 @@ export function TableNG(props: TableNGProps) {
     onColumnResize,
     data.fields,
     styles,
-    props.showTypeIcons,
+    showTypeIcons,
     filter,
     setFilter,
+    sortColumns,
+    setSortColumns,
     crossFilterOrder,
     crossFilterRows,
+    onSortByChange,
   ]);
 
   const hasSubTable = false;
@@ -205,6 +185,7 @@ export function TableNG(props: TableNGProps) {
           onColumnResize?.(key, entry.width);
         }
       }}
+      sortColumns={sortColumns}
       rowHeight={rowHeight}
       renderers={{
         renderRow: (key, rowProps) =>
@@ -247,7 +228,7 @@ export function mapFrameToDataGrid({
     setFilter,
     setIsInspecting,
     setSortColumns,
-    sortColumnsRef,
+    sortColumns,
     styles,
     theme,
     timeRange,
@@ -423,16 +404,7 @@ export function mapFrameToDataGrid({
           rows={rows}
           field={field}
           onSort={(columnKey, direction, isMultiSort) => {
-            handleSort(columnKey, direction, isMultiSort, setSortColumns, sortColumnsRef);
-
-            // Update panel context with the new sort order
-            if (onSortByChange) {
-              const sortByFields = sortColumnsRef.current.map(({ columnKey, direction }) => ({
-                displayName: columnKey,
-                desc: direction === 'DESC',
-              }));
-              onSortByChange(sortByFields);
-            }
+            handleSort(columnKey, direction, isMultiSort, setSortColumns, sortColumns, onSortByChange);
           }}
           direction={sortDirection}
           justifyContent={justifyColumnContent}
