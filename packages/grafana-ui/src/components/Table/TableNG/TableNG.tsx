@@ -78,7 +78,7 @@ import {
 
 export function TableNG(props: TableNGProps) {
   const theme = useTheme2();
-  const styles = useStyles2(getStyles2);
+  const styles = useStyles2(getStyles2, !!props.enablePagination);
   const panelContext = usePanelContext();
 
   const {
@@ -255,7 +255,7 @@ export function TableNG(props: TableNGProps) {
       />
       {
         enablePagination && (
-          <div /*className={styles.paginationContainer}*/ ref={paginationWrapperRef}>
+          <div className={styles.paginationContainer} ref={paginationWrapperRef}>
             <Pagination
               className="table-ng-pagination"
               currentPage={page + 1}
@@ -266,7 +266,7 @@ export function TableNG(props: TableNGProps) {
               }}
             />
             {!smallPagination && (
-              <div /*className={styles.paginationSummary}*/>
+              <div className={styles.paginationSummary}>
                 {/* TODO: once old table is deprecated, we can update the localiziation
                     string with the more consistent variable names */}
                 <Trans i18nKey="grafana-ui.table.pagination-summary">
@@ -278,7 +278,6 @@ export function TableNG(props: TableNGProps) {
         )
       }
     </>
-
   );
 }
 
@@ -597,7 +596,7 @@ export function onRowLeave(panelContext: PanelContext, enableSharedCrosshair: bo
   panelContext.eventBus.publish(new DataHoverClearEvent());
 }
 
-const getStyles2 = (theme: GrafanaTheme2) => ({
+const getStyles2 = (theme: GrafanaTheme2, enablePagination: boolean) => ({
   grid: css({
     '--rdg-background-color': theme.colors.background.primary,
     '--rdg-header-background-color': theme.colors.background.primary,
@@ -608,7 +607,9 @@ const getStyles2 = (theme: GrafanaTheme2) => ({
     // overlay/overflow on hover inherit this background and need to occlude cells below
     '--rdg-row-hover-background-color': theme.isDark ? '#212428' : '#f4f5f5',
 
-    blockSize: '100%',
+    // TODO: hate this magic pixel, lets see if there's a flexbox-based way to dynamically
+    // size the pagination in when needed.
+    blockSize: enablePagination ? 'calc(100% - 32px)' : '100%',
     scrollbarWidth: 'thin',
     scrollbarColor: theme.isDark ? '#fff5 #fff1' : '#0005 #0001',
 
@@ -650,6 +651,20 @@ const getStyles2 = (theme: GrafanaTheme2) => ({
   }),
   cellRight: css({
     textAlign: 'right',
+  }),
+  paginationContainer: css({
+    alignItems: 'center',
+    display: 'flex',
+    justifyContent: 'center',
+    marginTop: '8px',
+    width: '100%',
+  }),
+  paginationSummary: css({
+    color: theme.colors.text.secondary,
+    fontSize: theme.typography.bodySmall.fontSize,
+    display: 'flex',
+    justifyContent: 'flex-end',
+    padding: theme.spacing(0, 1, 0, 2),
   }),
 });
 
@@ -920,4 +935,5 @@ overlay/expand on hover, active line and cell styling
 inspect? actions?
 subtable/ expand
 cell types, backgrounds
+accessible sorting and filtering
 */
