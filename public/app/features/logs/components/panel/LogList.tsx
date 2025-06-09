@@ -29,6 +29,7 @@ import { GetRowContextQueryFn, LogLineMenuCustomItem } from './LogLineMenu';
 import { LogListContextProvider, LogListState, useLogListContext } from './LogListContext';
 import { LogListControls } from './LogListControls';
 import { preProcessLogs, LogListModel } from './processing';
+import { useKeyBindings } from './useKeyBindings';
 import {
   calculateFieldDimensions,
   getLogLineSize,
@@ -245,6 +246,7 @@ const LogListComponent = ({
   );
   const styles = getStyles(dimensions, { showTime }, theme);
   const widthContainer = wrapperRef.current ?? containerElement;
+  useKeyBindings();
 
   const debouncedResetAfterIndex = useMemo(() => {
     return debounce((index: number) => {
